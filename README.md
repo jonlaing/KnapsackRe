@@ -11,9 +11,7 @@ into a finitely big container.
 ```Reason
 open Knapsack;
 
-let items: list BasicItem.t =
-    [ (1, 1), (2, 1), (3, 4), (6, 5), (7, 8) ]
-    |> List.sort BasicItem.sort;
+let items: list BasicItem.t = [ (1, 1), (2, 1), (3, 4), (6, 5), (7, 8) ];
 
 let knapsack = BasicKnapsack.Sack 18 [];
 
@@ -49,7 +47,7 @@ let tasks: list Task.t = [
     { duration: 100, priority: 5, dueDate: 1291290 },
     { duration: 1000, priority: 3, dueDate: 930472309 },
     { duration: 2398, priority: 0, dueDate: 23907490 },
-] |> List.sort Task.sort
+];
 
 let emptySchedule = TaskList.Sack 86400 [];
 

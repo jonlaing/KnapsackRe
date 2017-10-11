@@ -69,7 +69,7 @@ module Make: KnapsackF =
       | [] => None
       | [x, ...xs] => willFit sack x ? Some i : findBest_ (i + 1) sack xs
       };
-    let findBest sack items => findBest_ 0 sack items;
+    let findBest sack items => findBest_ 0 sack (List.sort I.sort items);
     let rec pack sack items =>
       switch (findBest sack items) {
       | Some i =>
