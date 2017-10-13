@@ -78,10 +78,13 @@ module Make (I: Item) :Knapsack => {
     };
 };
 
-module BasicItem: Item = {
-  type t = (int, int);
-  let size = fst;
-  let sort (w0, v0) (w1, v1) => w0 - w1 + (v0 - v1);
+module BasicItem = {
+  type t = {
+    weight: int,
+    value: int
+  };
+  let size {weight} => weight;
+  let sort {weight: s0, value: v0} {weight: s1, value: v1} => s0 == s1 ? v0 - v1 : s0 - s1;
 };
 
 module BasicKnapsack = Make BasicItem;

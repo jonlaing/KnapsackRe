@@ -4,10 +4,17 @@
   "name": "knapsack",
   "version": "0.1.0",
   "sources": [
-    "src"
+    {
+      "dir": "src"
+    },
+    {
+      "dir": "__tests__",
+      "type": "dev"
+    }
   ],
   "bsc-flags": ["-bs-super-errors"],
   "bs-dependencies" : [
-    "bs-batteries"
+    "bs-batteries",
+    "bs-jest"
   ]
 }
