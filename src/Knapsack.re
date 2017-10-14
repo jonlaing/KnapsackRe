@@ -16,13 +16,6 @@ module type Item = {
   let sort: t => t => int;
 };
 
-module ItemList (I: Item) => {
-  type sorted;
-  type unsorted;
-  type t 'a = list I.t;
-  let sort (items: t unsorted) :t sorted => BatList.sort I.sort items;
-};
-
 module type Knapsack =
   (I: Item) =>
   {

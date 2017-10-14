@@ -11,11 +11,18 @@ into a finitely big container.
 ```Reason
 open Knapsack;
 
-let items: list BasicItem.t = [ (1, 1), (2, 1), (3, 4), (6, 5), (7, 8) ];
+let items: list BasicItem.t = [
+        {weight: 2, value: 1},
+        {weight: 1, value: 6},
+        {weight: 4, value: 3},
+        {weight: 3, value: 2},
+        {weight: 2, value: 3},
+        {weight: 9, value: 1}
+      ];
 
-let knapsack = BasicKnapsack.Sack 18 [];
+let knapsack = BasicKnapsack.make 18;
 
-let filled = BasicKnapsack.pack knapsack items;
+let (filled, leftovers) = BasicKnapsack.pack knapsack items;
 ```
 
 ## More advanced
@@ -36,9 +43,13 @@ module Task: Item = {
         let { duration: dur0, priority: p0, dueDate: d0 } = task0;
         let { duration: dur1, priority: p1, dueDate: d1 } = task1;
 
-        (dur0 - dur1) + (priority0 - priority1) + (d1 - d0);
-    }
-}
+        switch ((dur0 - dur1), (priority0 - priority1), (d1 - d0)) {
+            | (0,0,x) => x;
+            | (0,x,_) => x;
+            | (x,_,_) => x;
+        }
+    };
+};
 
 module TaskList = Make Task;
 
@@ -49,9 +60,9 @@ let tasks: list Task.t = [
     { duration: 2398, priority: 0, dueDate: 23907490 },
 ];
 
-let emptySchedule = TaskList.Sack 86400 [];
+let emptySchedule = TaskList.make 86400;
 
-let filledSchedule = TaskList.pack emptySchedule tasks;
+let (filledSchedule, leftoverTasks) = TaskList.pack emptySchedule tasks;
 ```
 
 # Build
@@ -65,6 +76,17 @@ npm run build
 npm run watch
 ```
 
+# Tests
+
+```
+npm run test
+```
+
+# Test + Watch
+
+```
+npm run watch:jest
+```
 
 # Editor
 If you use `vscode`, Press `Windows + Shift + B` it will build automatically
