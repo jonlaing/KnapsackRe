@@ -16,6 +16,13 @@ module type Item = {
   let sort: t => t => int;
 };
 
+module ItemList (I: Item) => {
+  type sorted;
+  type unsorted;
+  type t 'a = list I.t;
+  let sort (items: t unsorted) :t sorted => BatList.sort I.sort items;
+};
+
 module type Knapsack =
   (I: Item) =>
   {
@@ -23,13 +30,29 @@ module type Knapsack =
       size: int,
       items: list I.t
     };
+
+    /**
+     * Makes an empty [Knapsack.t] of a specified size
+     */
     let make: int => t;
+
+    /**
+     * Functor map. You can only manipulate the items through this
+     */
+    let map: (list I.t => list I.t) => t => t;
+
+    /**
+     * Monadic bind. You only have access to the items through this.
+     */
+    let bind: (list I.t => t) => t => t;
+    let (>>=): (list I.t => t) => t => t;
+    let return: list I.t => t;
 
     /**
      * Append an item to the Knapsack. Returns [Some Sack] if the item
      * fits, and [None] if it doesn't.
      */
-    let append: t => I.t => option t;
+    let append: t => I.t => BatPervasives.result t t;
 
     /**
      * Searches an ordered list of [Items] for the next best fit. If it can't
@@ -40,7 +63,7 @@ module type Knapsack =
 
     /**
      * Searches through an ordered list of [Items] and packs the best fitting
-     * [Items] in, returning a type of the new [Sack] and a list of the
+     * [Items] in, returning a type of the new [Knapsack.t] and a list of the
      * remaining [Items].
      */
     let pack: t => list I.t => (t, list I.t);
@@ -53,37 +76,69 @@ module Make: Knapsack =
       items: list I.t
     };
     let make size => {size, items: []};
+    let map f sack => {...sack, items: f sack.items};
+    let bind (f: list I.t => t) sack => f sack.items;
+    let (>>=) = bind;
+    let return items => {size: List.length items, items};
 
-    /** The amount of space in the [Sack] filled with [Items] */
+    /** The amount of space in the [Knapsack.t] filled with [Items] */
     let filledSpace {items} => List.fold_left (fun total item => total + I.size item) 0 items;
 
-    /** The remaining amount of space in teh [Sack] not filled with [Items] */
+    /** The remaining amount of space in teh [Knapsack.t] not filled with [Items] */
     let emptySpace sack => sack.size - filledSpace sack;
+
+    /** Whether a new item will fit in the [Knapsack.t] */
     let willFit sack item => I.size item <= emptySpace sack;
-    let append sack item => {
-      let {size, items} = sack;
-      let itemSize = I.size item;
-      willFit sack item ? Some {size: size + itemSize, items: [item, ...items]} : None
-    };
+    let append sack item =>
+      willFit sack item ?
+        BatPervasives.Ok {...sack, items: [item, ...sack.items]} : BatPervasives.Bad sack;
 
     /** A recursive definition of [findBest] that takes an index as a parameter */
     let rec findBest_ i sack items =>
       switch items {
       | [] => None
-      | [x, ...xs] => willFit sack x ? Some i : findBest_ (i + 1) sack xs
+      | [x, ...xs] =>
+        let fits = willFit sack x;
+        fits ? Some i : findBest_ (i + 1) sack xs
       };
-    let findBest sack items => findBest_ 0 sack (List.sort I.sort items);
+    let findBest sack items => findBest_ 0 sack items;
+
+    /**
+     * Plucks an item out of a list of items. It returns the item, and the
+     * list of items without the plucked item
+     */
+    let pluckItem (items: list I.t) i => (BatList.at items i, BatList.remove_at i items);
+
+    /**
+     * Moves an item out of a list of items and into a [Knapsack.t]. Returns a
+     * tuple of the new sack and items.
+     */
+    let packItem i sack items => {
+      let (item, xs) = pluckItem items i;
+      switch (append sack item) {
+      | Ok s => (s, xs)
+      | _ => (sack, items)
+      }
+    };
     let rec pack sack items =>
       switch (findBest sack items) {
       | Some i =>
-        let item = BatList.at items i;
-        let xs = BatList.remove_at i items;
-        switch (append sack item) {
-        | Some s => pack s xs
-        | _ => (sack, items)
-        }
+        let (newSack, newItems) = packItem i sack items;
+        pack newSack newItems
       | None => (sack, items)
       };
+  };
+
+module type KnapsackValidator =
+  (I: Item) =>
+  {
+    type notValid;
+    type valid;
+    type t 'a =
+      | V Make(I).t;
+    let make: Make(I).t => t notValid;
+    let validate: t notValid => option (t valid);
+    let save: option (t valid) => BatPervasives.result 'a 'b;
   };
 
 module BasicItem = {

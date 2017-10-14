@@ -2,6 +2,8 @@ open Jest;
 
 open Knapsack;
 
+let totalItemSize = List.fold_left (fun acc (i: BasicItem.t) => acc + i.weight) 0;
+
 let _ =
   describe
     "Sort"
@@ -53,7 +55,7 @@ describe
         {weight: 2, value: 3},
         {weight: 9, value: 1}
       ];
-      let totalSize = List.fold_left (fun acc (i: BasicItem.t) => acc + i.weight) 0 items;
+      let totalSize = totalItemSize items;
       describe
         "finding the best"
         (
@@ -65,7 +67,9 @@ describe
                   let sack = BasicKnapsack.make 1;
                   let res = BasicKnapsack.findBest sack items;
                   switch res {
-                  | Some i => expect i |> toEqual 0
+                  | Some i =>
+                    let item = BatList.at items i;
+                    expect item.weight |> toEqual 1
                   | _ => expect 1 |> toEqual 0
                   }
                 }
@@ -83,7 +87,7 @@ describe
                   let item: BasicItem.t = {weight: 2, value: 1};
                   let res = BasicKnapsack.append sack item;
                   switch res {
-                  | Some {items: [x]} => expect x |> toEqual item
+                  | Ok {items: [x]} => expect x |> toEqual item
                   | _ => expect item |> not_ |> toBe item
                   }
                 }
@@ -95,8 +99,8 @@ describe
                   let item: BasicItem.t = {weight: 4, value: 1};
                   let res = BasicKnapsack.append sack item;
                   switch res {
-                  | None => expect 0 |> toEqual 0
-                  | _ => expect 0 |> not_ |> toEqual 0
+                  | Bad s => expect s |> toEqual sack
+                  | _ => expect (BasicKnapsack.make 0) |> not_ |> toEqual sack
                   }
                 }
               )
@@ -119,11 +123,9 @@ describe
         (
           fun () => {
             let sack = BasicKnapsack.make (totalSize - 5);
-            let res = BasicKnapsack.pack sack items;
-            switch res {
-            | (sack, []) => expect (List.length sack.items) |> not_ |> toEqual (List.length items)
-            | (_, _) => expect 1 |> toBe 0
-            }
+            let (sack, xs) = BasicKnapsack.pack sack items;
+            expect (List.length sack.items, List.length xs) |> not_ |>
+            toEqual (List.length items, 0)
           }
         )
     }
