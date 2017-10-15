@@ -122,18 +122,6 @@ module Make: Knapsack =
       };
   };
 
-module type KnapsackValidator =
-  (I: Item) =>
-  {
-    type notValid;
-    type valid;
-    type t 'a =
-      | V Make(I).t;
-    let make: Make(I).t => t notValid;
-    let validate: t notValid => option (t valid);
-    let save: option (t valid) => BatPervasives.result 'a 'b;
-  };
-
 module BasicItem = {
   type t = {
     weight: int,
