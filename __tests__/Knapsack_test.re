@@ -19,7 +19,7 @@ let _ =
                 (
                   fun () => {
                     let items: list BasicItem.t = [{weight: 2, value: 1}, {weight: 1, value: 6}];
-                    let sorted = BatList.sort BasicItem.sort items;
+                    let sorted = List.sort BasicItem.sort items;
                     switch sorted {
                     | [a, b] => expect (a.BasicItem.value, b.BasicItem.value) |> toEqual (6, 1)
                     | _ => expect (0, 0) |> toBe (1, 1) /* just make it fail */
@@ -31,7 +31,7 @@ let _ =
                 (
                   fun () => {
                     let items: list BasicItem.t = [{weight: 1, value: 1}, {weight: 1, value: 6}];
-                    let sorted = BatList.sort BasicItem.sort items;
+                    let sorted = List.sort BasicItem.sort items;
                     switch sorted {
                     | [a, b] => expect (a.BasicItem.value, b.BasicItem.value) |> toEqual (1, 6)
                     | _ => expect (0, 0) |> toBe (1, 1) /* just make it fail */
@@ -56,56 +56,6 @@ describe
         {weight: 9, value: 1}
       ];
       let totalSize = totalItemSize items;
-      describe
-        "finding the best"
-        (
-          fun () =>
-            test
-              "gets the right index for one element"
-              (
-                fun () => {
-                  let sack = BasicKnapsack.make 1;
-                  let res = BasicKnapsack.findBest sack items;
-                  switch res {
-                  | Some i =>
-                    let item = BatList.at items i;
-                    expect item.weight |> toEqual 1
-                  | _ => expect 1 |> toEqual 0
-                  }
-                }
-              )
-        );
-      describe
-        "appending"
-        (
-          fun () => {
-            let sack = BasicKnapsack.make 3;
-            test
-              "can append"
-              (
-                fun () => {
-                  let item: BasicItem.t = {weight: 2, value: 1};
-                  let res = BasicKnapsack.append sack item;
-                  switch res {
-                  | Ok {items: [x]} => expect x |> toEqual item
-                  | _ => expect item |> not_ |> toBe item
-                  }
-                }
-              );
-            test
-              "can't append"
-              (
-                fun () => {
-                  let item: BasicItem.t = {weight: 4, value: 1};
-                  let res = BasicKnapsack.append sack item;
-                  switch res {
-                  | Bad s => expect s |> toEqual sack
-                  | _ => expect (BasicKnapsack.make 0) |> not_ |> toEqual sack
-                  }
-                }
-              )
-          }
-        );
       test
         "filled knapsack"
         (
@@ -119,13 +69,24 @@ describe
           }
         );
       test
-        "unfilled knapsack"
+        "too small knapsack"
         (
           fun () => {
             let sack = BasicKnapsack.make (totalSize - 5);
             let (sack, xs) = BasicKnapsack.pack sack items;
             expect (List.length sack.items, List.length xs) |> not_ |>
             toEqual (List.length items, 0)
+          }
+        );
+      test
+        "will append to partially fillded knapsack"
+        (
+          fun () => {
+            let sack = BasicKnapsack.make (totalSize + 5);
+            let oneMore: BasicItem.t = {weight: 5, value: 6};
+            let (newSack, _) = BasicKnapsack.pack sack items;
+            let (final, _) = BasicKnapsack.pack newSack [oneMore];
+            expect (List.length final.items) |> toEqual (List.length items + 1)
           }
         );
       describe

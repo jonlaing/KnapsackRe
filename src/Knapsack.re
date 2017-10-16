@@ -6,6 +6,7 @@ module type Item = {
    * in its designated [Knapsack].
    */
   let size: t => int;
+  let value: t => int;
 
   /**
    * A function for sorting [Items] in an order conducive for packing. This
@@ -28,6 +29,7 @@ module type Knapsack =
      * Makes an empty [Knapsack.t] of a specified size
      */
     let make: int => t;
+    let filledSpace: t => int;
 
     /**
      * Functor map. You can only manipulate the items through this
@@ -40,19 +42,6 @@ module type Knapsack =
     let bind: t => (t => t) => t;
     let (>>=): t => (t => t) => t;
     let return: list I.t => t;
-
-    /**
-     * Append an item to the Knapsack. Returns [Some Sack] if the item
-     * fits, and [None] if it doesn't.
-     */
-    let append: t => I.t => BatPervasives.result t t;
-
-    /**
-     * Searches an ordered list of [Items] for the next best fit. If it can't
-     * find an [Item] that fits, it will return [None], otherwise it returns
-     * [Some int].
-     */
-    let findBest: t => list I.t => option int;
 
     /**
      * Searches through an ordered list of [Items] and packs the best fitting
@@ -73,11 +62,10 @@ module Make: Knapsack =
     /** Whether a new item will fit in the [Knapsack.t] */
 
     /** The amount of space in the [Knapsack.t] filled with [Items] */
-    let filledSpace {items} => List.fold_left (fun total item => total + I.size item) 0 items;
+    let filledSpace {items} => totalItemSize items;
 
     /** The remaining amount of space in teh [Knapsack.t] not filled with [Items] */
     let emptySpace sack => sack.size - filledSpace sack;
-    let willFit sack item => I.size item <= emptySpace sack;
     let make size => {size, items: []};
 
     /**
@@ -102,44 +90,34 @@ module Make: Knapsack =
     };
     let (>>=) = bind;
     let return items => {size: totalItemSize items, items};
-    let append sack item =>
-      willFit sack item ?
-        BatPervasives.Ok {...sack, items: [item, ...sack.items]} : BatPervasives.Bad sack;
-
-    /** A recursive definition of [findBest] that takes an index as a parameter */
-    let rec findBest_ i sack items =>
-      switch items {
-      | [] => None
-      | [x, ...xs] =>
-        let fits = willFit sack x;
-        fits ? Some i : findBest_ (i + 1) sack xs
+    let rec m i w items =>
+      switch i {
+      | 0 => 0
+      | i =>
+        let item = List.nth items (i - 1);
+        let wi = I.size item;
+        let vi = I.value item;
+        if (wi > w) {
+          m (i - 1) w items
+        } else {
+          max (m (i - 1) w items) (m (i - 1) (w - wi) items + vi)
+        }
       };
-    let findBest sack items => findBest_ 0 sack items;
-
-    /**
-     * Plucks an item out of a list of items. It returns the item, and the
-     * list of items without the plucked item
-     */
-    let pluckItem (items: list I.t) i => (BatList.at items i, BatList.remove_at i items);
-
-    /**
-     * Moves an item out of a list of items and into a [Knapsack.t]. Returns a
-     * tuple of the new sack and items.
-     */
-    let packItem i sack items => {
-      let (item, xs) = pluckItem items i;
-      switch (append sack item) {
-      | Ok s => (s, xs)
-      | _ => (sack, items)
-      }
+    let mem_m = Util.memoize m;
+    let rec accept i w items a =>
+      switch i {
+      | 0 => a
+      | i =>
+        let item = List.nth items (i - 1);
+        let (accepted, rejected) = a;
+        mem_m i w items === mem_m (i - 1) w items ?
+          accept (i - 1) w items (accepted, [item, ...rejected]) :
+          accept (i - 1) w items ([item, ...accepted], rejected)
+      };
+    let pack sack items => {
+      let (accepted, rejected) = accept (List.length items) (emptySpace sack) items ([], []);
+      ({...sack, items: List.append sack.items accepted}, rejected)
     };
-    let rec pack sack items =>
-      switch (findBest sack items) {
-      | Some i =>
-        let (newSack, newItems) = packItem i sack items;
-        pack newSack newItems
-      | None => (sack, items)
-      };
   };
 
 module BasicItem = {
@@ -148,6 +126,7 @@ module BasicItem = {
     value: int
   };
   let size {weight} => weight;
+  let value {value} => value;
   let sort {weight: s0, value: v0} {weight: s1, value: v1} => s0 == s1 ? v0 - v1 : s0 - s1;
 };
 
