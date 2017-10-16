@@ -127,6 +127,68 @@ describe
             expect (List.length sack.items, List.length xs) |> not_ |>
             toEqual (List.length items, 0)
           }
+        );
+      describe
+        "monadic and functor operations"
+        (
+          fun () => {
+            describe
+              "functor"
+              (
+                fun () => {
+                  test
+                    "will transform items if they fit"
+                    (
+                      fun () => {
+                        let sack = BasicKnapsack.make 5;
+                        let newItem: BasicItem.t = {weight: 5, value: 1};
+                        let newSack = BasicKnapsack.map (fun items => [newItem, ...items]) sack;
+                        expect (newSack.size, totalItemSize newSack.items) |> toEqual (5, 5)
+                      }
+                    );
+                  test
+                    "won't transform items if they don't fit"
+                    (
+                      fun () => {
+                        let sack = BasicKnapsack.make 4;
+                        let newItem: BasicItem.t = {weight: 5, value: 1};
+                        let newSack = BasicKnapsack.map (fun items => [newItem, ...items]) sack;
+                        expect (newSack.size, totalItemSize newSack.items) |> toEqual (4, 0)
+                      }
+                    )
+                }
+              );
+            describe
+              "bind"
+              (
+                fun () => {
+                  test
+                    "binds sacks if they fit"
+                    (
+                      fun () => {
+                        let addItem i => BasicKnapsack.map (fun items => [i, ...items]);
+                        let sack = BasicKnapsack.make 5;
+                        let item0: BasicItem.t = {weight: 2, value: 1};
+                        let item1: BasicItem.t = {weight: 3, value: 2};
+                        let newSack = BasicKnapsack.(sack >>= addItem item0 >>= addItem item1);
+                        expect (newSack.size, totalItemSize newSack.items) |> toEqual (5, 5)
+                      }
+                    );
+                  test
+                    "binds only as many sacks as fit"
+                    (
+                      fun () => {
+                        let addItem i => BasicKnapsack.map (fun items => [i, ...items]);
+                        let sack = BasicKnapsack.make 4;
+                        let item0: BasicItem.t = {weight: 2, value: 1};
+                        let item1: BasicItem.t = {weight: 3, value: 2};
+                        let newSack = BasicKnapsack.(sack >>= addItem item0 >>= addItem item1);
+                        expect (newSack.size, totalItemSize newSack.items) |> toEqual (4, 2)
+                      }
+                    )
+                }
+              )
+          }
         )
     }
   );

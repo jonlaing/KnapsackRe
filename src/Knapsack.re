@@ -35,10 +35,10 @@ module type Knapsack =
     let map: (list I.t => list I.t) => t => t;
 
     /**
-     * Monadic bind. You only have access to the items through this.
+     * Monadic bind.
      */
-    let bind: (list I.t => t) => t => t;
-    let (>>=): (list I.t => t) => t => t;
+    let bind: t => (t => t) => t;
+    let (>>=): t => (t => t) => t;
     let return: list I.t => t;
 
     /**
@@ -68,20 +68,40 @@ module Make: Knapsack =
       size: int,
       items: list I.t
     };
-    let make size => {size, items: []};
-    let map f sack => {...sack, items: f sack.items};
-    let bind (f: list I.t => t) sack => f sack.items;
-    let (>>=) = bind;
-    let return items => {size: List.length items, items};
+    let totalItemSize = List.fold_left (fun acc i => acc + I.size i) 0;
+
+    /** Whether a new item will fit in the [Knapsack.t] */
 
     /** The amount of space in the [Knapsack.t] filled with [Items] */
     let filledSpace {items} => List.fold_left (fun total item => total + I.size item) 0 items;
 
     /** The remaining amount of space in teh [Knapsack.t] not filled with [Items] */
     let emptySpace sack => sack.size - filledSpace sack;
-
-    /** Whether a new item will fit in the [Knapsack.t] */
     let willFit sack item => I.size item <= emptySpace sack;
+    let make size => {size, items: []};
+
+    /**
+     * [map] will only expose the items and will not allow a list of items bigger
+     * than the size of the knapsack. So: [
+     *  make 0 |> map (fun items => [anotherItem, ...items])
+     * ]
+     * will return an empty sack.
+     */
+    let map f sack => {
+      let items = f sack.items;
+      totalItemSize items <= sack.size ? {...sack, items} : sack
+    };
+
+    /**
+     * [bind] will not allow you to make an item list larger than the size of
+     * the knapsack.
+     */
+    let bind sack (f: t => t) => {
+      let newSack = f sack;
+      totalItemSize newSack.items <= newSack.size ? newSack : sack
+    };
+    let (>>=) = bind;
+    let return items => {size: totalItemSize items, items};
     let append sack item =>
       willFit sack item ?
         BatPervasives.Ok {...sack, items: [item, ...sack.items]} : BatPervasives.Bad sack;
