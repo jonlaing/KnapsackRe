@@ -59,8 +59,6 @@ module Make: Knapsack =
     };
     let totalItemSize = List.fold_left (fun acc i => acc + I.size i) 0;
 
-    /** Whether a new item will fit in the [Knapsack.t] */
-
     /** The amount of space in the [Knapsack.t] filled with [Items] */
     let filledSpace {items} => totalItemSize items;
 
@@ -90,27 +88,40 @@ module Make: Knapsack =
     };
     let (>>=) = bind;
     let return items => {size: totalItemSize items, items};
-    let rec m i w items =>
+
+    /**
+     * This is figures out the maximum size that could fit in the knapsack.
+     * This is the real heavy lifter of the module, and is based on the actual
+     * algorithmic solution to this problem.
+     */
+    let rec maxFit i maxSize items =>
       switch i {
       | 0 => 0
       | i =>
         let item = List.nth items (i - 1);
-        let wi = I.size item;
-        let vi = I.value item;
-        if (wi > w) {
-          m (i - 1) w items
+        let itemSize = I.size item;
+        let itemValue = I.value item;
+        if (itemSize > maxSize) {
+          maxFit (i - 1) maxSize items
         } else {
-          max (m (i - 1) w items) (m (i - 1) (w - wi) items + vi)
+          max
+            (maxFit (i - 1) maxSize items) (maxFit (i - 1) (maxSize - itemSize) items + itemValue)
         }
       };
-    let mem_m = Util.memoize m;
+
+    /** Memoized version of [maxFit] */
+    let mem_maxFit = Util.memoize maxFit;
+
+    /**
+     * Determines the proper items to pack based on the results from [maxFit]
+     */
     let rec accept i w items a =>
       switch i {
       | 0 => a
       | i =>
         let item = List.nth items (i - 1);
         let (accepted, rejected) = a;
-        mem_m i w items === mem_m (i - 1) w items ?
+        mem_maxFit i w items === mem_maxFit (i - 1) w items ?
           accept (i - 1) w items (accepted, [item, ...rejected]) :
           accept (i - 1) w items ([item, ...accepted], rejected)
       };
