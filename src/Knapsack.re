@@ -89,41 +89,51 @@ module Make: Knapsack =
     let (>>=) = bind;
     let return items => {size: totalItemSize items, items};
 
+    /** For memoizing maxFit */
+    let maxFitCache = Hashtbl.create 0;
+
     /**
      * This is figures out the maximum size that could fit in the knapsack.
      * This is the real heavy lifter of the module, and is based on the actual
      * algorithmic solution to this problem.
      */
-    let rec maxFit i maxSize items =>
-      switch i {
-      | 0 => 0
-      | i =>
-        let item = List.nth items (i - 1);
-        let itemSize = I.size item;
-        let itemValue = I.value item;
-        if (itemSize > maxSize) {
-          maxFit (i - 1) maxSize items
-        } else {
-          max
-            (maxFit (i - 1) maxSize items) (maxFit (i - 1) (maxSize - itemSize) items + itemValue)
+    let rec maxFit i maxSize items => {
+      let hashKey = (i, maxSize, items);
+      switch (Hashtbl.find maxFitCache hashKey) {
+      | exception Not_found =>
+        switch i {
+        | 0 => 0
+        | i =>
+          let item = List.nth items (i - 1);
+          let itemSize = I.size item;
+          let itemValue = I.value item;
+          let fit =
+            if (itemSize > maxSize) {
+              maxFit (i - 1) maxSize items
+            } else {
+              max
+                (maxFit (i - 1) maxSize items)
+                (maxFit (i - 1) (maxSize - itemSize) items + itemValue)
+            };
+          Hashtbl.add maxFitCache hashKey fit;
+          fit
         }
-      };
-
-    /** Memoized version of [maxFit] */
-    let mem_maxFit = Util.memoize maxFit;
+      | fit => fit
+      }
+    };
 
     /**
      * Determines the proper items to pack based on the results from [maxFit]
      */
-    let rec accept i w items a =>
+    let rec accept i maxSize items itemsDiff =>
       switch i {
-      | 0 => a
+      | 0 => itemsDiff
       | i =>
         let item = List.nth items (i - 1);
-        let (accepted, rejected) = a;
-        mem_maxFit i w items === mem_maxFit (i - 1) w items ?
-          accept (i - 1) w items (accepted, [item, ...rejected]) :
-          accept (i - 1) w items ([item, ...accepted], rejected)
+        let (accepted, rejected) = itemsDiff;
+        maxFit i maxSize items === maxFit (i - 1) maxSize items ?
+          accept (i - 1) maxSize items (accepted, [item, ...rejected]) :
+          accept (i - 1) maxSize items ([item, ...accepted], rejected)
       };
     let pack sack items => {
       let (accepted, rejected) = accept (List.length items) (emptySpace sack) items ([], []);
