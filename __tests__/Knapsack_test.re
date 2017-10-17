@@ -47,7 +47,7 @@ describe
   (
     fun () => {
       open Expect;
-      let items: list BasicItem.t = [
+      let unsorted: list BasicItem.t = [
         {weight: 2, value: 1},
         {weight: 1, value: 6},
         {weight: 4, value: 3},
@@ -55,6 +55,7 @@ describe
         {weight: 2, value: 3},
         {weight: 9, value: 1}
       ];
+      let items = List.sort BasicItem.sort unsorted;
       let totalSize = totalItemSize items;
       test
         "filled knapsack"
