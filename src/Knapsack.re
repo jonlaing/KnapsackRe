@@ -96,8 +96,9 @@ module Make: Knapsack =
      * This is figures out the maximum size that could fit in the knapsack.
      * This is the real heavy lifter of the module, and is based on the actual
      * algorithmic solution to this problem.
+     * It's basically lifted from: https://en.wikipedia.org/wiki/Knapsack_problem
      */
-    let rec maxFit i maxSize items => {
+    let rec bestFit i maxSize items => {
       let hashKey = (i, maxSize, items);
       switch (Hashtbl.find maxFitCache hashKey) {
       | exception Not_found =>
@@ -109,11 +110,11 @@ module Make: Knapsack =
           let itemValue = I.value item;
           let fit =
             if (itemSize > maxSize) {
-              maxFit (i - 1) maxSize items
+              bestFit (i - 1) maxSize items
             } else {
               max
-                (maxFit (i - 1) maxSize items)
-                (maxFit (i - 1) (maxSize - itemSize) items + itemValue)
+                (bestFit (i - 1) maxSize items)
+                (bestFit (i - 1) (maxSize - itemSize) items + itemValue)
             };
           Hashtbl.add maxFitCache hashKey fit;
           fit
@@ -131,7 +132,7 @@ module Make: Knapsack =
       | i =>
         let item = List.nth items (i - 1);
         let (accepted, rejected) = itemsDiff;
-        maxFit i maxSize items === maxFit (i - 1) maxSize items ?
+        bestFit i maxSize items === bestFit (i - 1) maxSize items ?
           accept (i - 1) maxSize items (accepted, [item, ...rejected]) :
           accept (i - 1) maxSize items ([item, ...accepted], rejected)
       };
