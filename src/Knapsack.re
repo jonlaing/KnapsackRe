@@ -89,18 +89,15 @@ module Make: Knapsack =
     let (>>=) = bind;
     let return items => {size: totalItemSize items, items};
 
-    /** For memoizing maxFit */
-    let maxFitCache = Hashtbl.create 0;
-
     /**
      * This is figures out the maximum size that could fit in the knapsack.
      * This is the real heavy lifter of the module, and is based on the actual
      * algorithmic solution to this problem.
      * It's basically lifted from: https://en.wikipedia.org/wiki/Knapsack_problem
      */
-    let rec bestFit i maxSize items => {
+    let rec bestFit cache i maxSize items => {
       let hashKey = (i, maxSize, items);
-      switch (Hashtbl.find maxFitCache hashKey) {
+      switch (Hashtbl.find cache hashKey) {
       | exception Not_found =>
         switch i {
         | 0 => 0
@@ -110,13 +107,13 @@ module Make: Knapsack =
           let itemValue = I.value item;
           let fit =
             if (itemSize > maxSize) {
-              bestFit (i - 1) maxSize items
+              bestFit cache (i - 1) maxSize items
             } else {
               max
-                (bestFit (i - 1) maxSize items)
-                (bestFit (i - 1) (maxSize - itemSize) items + itemValue)
+                (bestFit cache (i - 1) maxSize items)
+                (bestFit cache (i - 1) (maxSize - itemSize) items + itemValue)
             };
-          Hashtbl.add maxFitCache hashKey fit;
+          Hashtbl.add cache hashKey fit;
           fit
         }
       | fit => fit
@@ -132,6 +129,8 @@ module Make: Knapsack =
       | i =>
         let item = List.nth items (i - 1);
         let (accepted, rejected) = itemsDiff;
+        let maxFitCache = Hashtbl.create 0;
+        let bestFit = bestFit maxFitCache;
         bestFit i maxSize items === bestFit (i - 1) maxSize items ?
           accept (i - 1) maxSize items (accepted, [item, ...rejected]) :
           accept (i - 1) maxSize items ([item, ...accepted], rejected)
