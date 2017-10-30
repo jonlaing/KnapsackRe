@@ -11,18 +11,18 @@ into a finitely big container.
 ```Reason
 open Knapsack;
 
-let items: list BasicItem.t = [
-        {weight: 2, value: 1},
-        {weight: 1, value: 6},
-        {weight: 4, value: 3},
-        {weight: 3, value: 2},
-        {weight: 2, value: 3},
-        {weight: 9, value: 1}
-      ];
+let items: list(BasicItem.t) = [
+  {weight: 2, value: 1},
+  {weight: 1, value: 6},
+  {weight: 4, value: 3},
+  {weight: 3, value: 2},
+  {weight: 2, value: 3},
+  {weight: 9, value: 1}
+];
 
-let knapsack = BasicKnapsack.make 18;
+let knapsack = BasicKnapsack.make(18);
 
-let (filled, leftovers) = BasicKnapsack.pack knapsack items;
+let (filled, leftovers) = BasicKnapsack.pack(knapsack, items);
 ```
 
 ## More advanced
@@ -31,38 +31,34 @@ let (filled, leftovers) = BasicKnapsack.pack knapsack items;
 open Knapsack;
 
 module Task: Item = {
-    type t = {
-        duration: int,
-        priority: int,
-        dueDate: int
-    };
-
-    let size { duration: d } => d;
-
-    let sort task0 task1 => {
-        let { duration: dur0, priority: p0, dueDate: d0 } = task0;
-        let { duration: dur1, priority: p1, dueDate: d1 } = task1;
-
-        switch ((dur0 - dur1), (priority0 - priority1), (d1 - d0)) {
-            | (0,0,x) => x;
-            | (0,x,_) => x;
-            | (x,_,_) => x;
-        }
-    };
+  type t = {
+    duration: int,
+    priority: int,
+    dueDate: int
+  };
+  let size = ({duration: d}) => d;
+  let sort = (task0, task1) => {
+    let {duration: dur0, priority: p0, dueDate: d0} = task0;
+    let {duration: dur1, priority: p1, dueDate: d1} = task1;
+    switch (dur0 - dur1, priority0 - priority1, d1 - d0) {
+    | (0, 0, x) => x
+    | (0, x, _) => x
+    | (x, _, _) => x
+    }
+  };
 };
 
-module TaskList = Make Task;
+module TaskList = Make(Task); /* these are arbitrary input values */
 
-/* these are arbitrary input values */
-let tasks: list Task.t = [
-    { duration: 100, priority: 5, dueDate: 1291290 },
-    { duration: 1000, priority: 3, dueDate: 930472309 },
-    { duration: 2398, priority: 0, dueDate: 23907490 },
+let tasks: list(Task.t) = [
+  {duration: 100, priority: 5, dueDate: 1291290},
+  {duration: 1000, priority: 3, dueDate: 930472309},
+  {duration: 2398, priority: 0, dueDate: 23907490}
 ];
 
-let emptySchedule = TaskList.make 86400;
+let emptySchedule = TaskList.make(86400);
 
-let (filledSchedule, leftoverTasks) = TaskList.pack emptySchedule tasks;
+let (filledSchedule, leftoverTasks) = TaskList.pack(emptySchedule, tasks);
 ```
 
 # Build
